@@ -1,0 +1,42 @@
+#!/usr/bin/env bash
+# ~/.gw/hooks/on-start.d/early — select EARLY activity for new worktree
+# Args: $1=branch  $2=worktree_path
+set -euo pipefail
+source "${HOME}/.gw/hooks/lib.sh"
+gw_early_configured || exit 0
+
+worktree_path="$2"
+
+token="$(gw_early_token)" || exit 0
+
+activities_json=$(curl -s "${EARLY_BASE}/activities" \
+  -H "Authorization: Bearer $token")
+
+names=()
+ids=()
+while IFS= read -r line; do names+=("$line"); done \
+  < <(echo "$activities_json" | jq -r '.activities[].name')
+while IFS= read -r line; do ids+=("$line"); done \
+  < <(echo "$activities_json" | jq -r '.activities[].id')
+
+width=${#names[@]}
+width=${#width}
+echo "" > /dev/tty
+echo "  EARLY activity for this worktree:" > /dev/tty
+for (( i=0; i<${#names[@]}; i++ )); do
+  printf "    %${width}d) %s\n" $(( i+1 )) "${names[$i]}" > /dev/tty
+done
+echo "" > /dev/tty
+
+printf "  > " > /dev/tty
+read -r choice < /dev/tty
+
+if ! [[ "$choice" =~ ^[0-9]+$ ]] || \
+   [[ "$choice" -lt 1 || "$choice" -gt "${#ids[@]}" ]]; then
+  echo "  ⚠  invalid selection — EARLY tracking skipped for this worktree" >&2
+  exit 0
+fi
+
+echo "${ids[$(( choice-1 ))]}" > "${worktree_path}/.gw-activity"
+echo ""
+echo "  ✓ EARLY activity mapped"

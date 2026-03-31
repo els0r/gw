@@ -1,0 +1,43 @@
+#!/usr/bin/env bash
+# ~/.gw/hooks/on-park.d/early — stop EARLY timer with park note
+# Args: $1=branch  $2=worktree_path  $3=note
+set -euo pipefail
+source "${HOME}/.gw/hooks/lib.sh"
+gw_early_configured || exit 0
+
+worktree_path="$2"
+note="${3:-}"
+activity_file="${worktree_path}/.gw-activity"
+
+if [[ ! -f "$activity_file" ]]; then
+  echo "  ⚠  no EARLY activity set — timer not stopped" >&2
+  exit 0
+fi
+
+token="$(gw_early_token)" || exit 0
+
+# Step 1: set the park note on the running tracking
+if [[ -n "$note" ]]; then
+  edit_body=$(jq -n --arg n "$note" '{"note":{"text":$n}}')
+  edit_resp=$(curl -s -X PATCH "${EARLY_BASE}/tracking" \
+    -H "Authorization: Bearer $token" \
+    -H "Content-Type: application/json" \
+    -d "$edit_body")
+  if echo "$edit_resp" | jq -e '.message' &>/dev/null; then
+    echo "  ⚠  EARLY note failed: $(echo "$edit_resp" | jq -r '.message')" >&2
+  fi
+fi
+
+# Step 2: stop the timer
+stopped_at="$(date -u '+%Y-%m-%dT%H:%M:%S.000')"
+stop_body=$(jq -n --arg t "$stopped_at" '{"stoppedAt":$t}')
+stop_resp=$(curl -s -X POST "${EARLY_BASE}/tracking/stop" \
+  -H "Authorization: Bearer $token" \
+  -H "Content-Type: application/json" \
+  -d "$stop_body")
+
+if echo "$stop_resp" | jq -e '.message' &>/dev/null; then
+  echo "  ⚠  EARLY stop failed: $(echo "$stop_resp" | jq -r '.message')" >&2
+else
+  echo "  ⏱  EARLY timer stopped"
+fi

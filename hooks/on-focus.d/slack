@@ -1,0 +1,14 @@
+#!/usr/bin/env bash
+# ~/.gw/hooks/on-focus.d/slack — set Slack focus status
+# Args: $1=branch  $2=worktree_path
+set -euo pipefail
+source "${HOME}/.gw/hooks/lib.sh"
+
+token="$(gw_config_get SLACK_TOKEN)"
+[[ -z "$token" ]] && exit 0
+
+until="$(date -v+90M '+%H:%M')"
+curl -s -o /dev/null -X POST "https://slack.com/api/users.profile.set" \
+  -H "Authorization: Bearer $token" \
+  -H "Content-Type: application/json" \
+  -d "{\"profile\":{\"status_text\":\"Focus block until ${until}\",\"status_emoji\":\"🎯\",\"status_expiration\":0}}"

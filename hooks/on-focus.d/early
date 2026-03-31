@@ -1,0 +1,30 @@
+#!/usr/bin/env bash
+# ~/.gw/hooks/on-focus.d/early — start EARLY timer
+# Args: $1=branch  $2=worktree_path
+set -euo pipefail
+source "${HOME}/.gw/hooks/lib.sh"
+gw_early_configured || exit 0
+
+worktree_path="$2"
+activity_file="${worktree_path}/.gw-activity"
+
+if [[ ! -f "$activity_file" ]]; then
+  echo "  ⚠  no EARLY activity set — run gw start to configure" >&2
+  exit 0
+fi
+
+activity_id="$(cat "$activity_file")"
+token="$(gw_early_token)" || exit 0
+started_at="$(date -u '+%Y-%m-%dT%H:%M:%S.000')"
+
+resp=$(curl -s -X POST \
+  "${EARLY_BASE}/tracking/${activity_id}/start" \
+  -H "Authorization: Bearer $token" \
+  -H "Content-Type: application/json" \
+  -d "{\"startedAt\":\"${started_at}\"}")
+
+if echo "$resp" | jq -e '.message' &>/dev/null; then
+  echo "  ⚠  EARLY start failed: $(echo "$resp" | jq -r '.message')" >&2
+else
+  echo "  ⏱  EARLY timer started"
+fi

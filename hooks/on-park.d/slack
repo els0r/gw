@@ -1,0 +1,13 @@
+#!/usr/bin/env bash
+# ~/.gw/hooks/on-park.d/slack — clear Slack focus status
+# Args: $1=branch  $2=worktree_path  $3=note
+set -euo pipefail
+source "${HOME}/.gw/hooks/lib.sh"
+
+token="$(gw_config_get SLACK_TOKEN)"
+[[ -z "$token" ]] && exit 0
+
+curl -s -o /dev/null -X POST "https://slack.com/api/users.profile.set" \
+  -H "Authorization: Bearer $token" \
+  -H "Content-Type: application/json" \
+  -d '{"profile":{"status_text":"","status_emoji":"","status_expiration":0}}'
