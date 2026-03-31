@@ -1,3 +1,4 @@
+#!/usr/bin/env bash
 # handy shell functions
 
 # Git worktree helpers
@@ -23,10 +24,13 @@
 
 # ── Guards ───────────────────────────────────────────────────────────────────
 
-if ! command -v jq &>/dev/null; then
-  echo "gw: jq is required but not installed (brew install jq)" >&2
-  return 1
-fi
+_gw_check_deps() {
+  if ! command -v jq &>/dev/null; then
+    echo "gw: jq is required but not installed (brew install jq)" >&2
+    return 1
+  fi
+}
+_gw_check_deps || { [[ "${BASH_SOURCE[0]}" == "$0" ]] && exit 1 || return 1; }
 
 # ── State helpers ────────────────────────────────────────────────────────────
 
@@ -357,3 +361,10 @@ _gw_finish() {
     [[ -f "${session_dir}/log" ]] && echo "session log: ${session_dir}/log"
   fi
 }
+
+# ── Entrypoint (direct execution) ───────────────────────────────────────────
+
+# When executed (not sourced), dispatch to gw immediately.
+if [[ "${BASH_SOURCE[0]}" == "$0" ]]; then
+  gw "$@"
+fi
