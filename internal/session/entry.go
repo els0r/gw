@@ -128,7 +128,7 @@ func ParseLogFile(path string) ([]Entry, error) {
 // Format: "2026-03-31 14:03  focus: tuned agentic setup"
 // Format: "2026-03-31 14:42  park:  introduced hooks"
 func parseLine(line string) (Entry, error) {
-	// Minimum: "YYYY-MM-DD HH:MM  X: Y" = 16 + 2 + at least "park: x" = 25
+	// minimum: "YYYY-MM-DD HH:MM  X: Y" = 16 + 2 + at least "park: x" = 25
 	if len(line) < 25 {
 		return Entry{}, fmt.Errorf("line too short")
 	}
@@ -208,7 +208,7 @@ func ReadAllActivities(sessionsDir string, first, last time.Time, order SortOrde
 			continue
 		}
 
-		// Filter entries to the time window.
+		// filter entries to the time window
 		var filtered []Entry
 		for _, e := range entries {
 			if !e.Time.Before(first) && e.Time.Before(last) {

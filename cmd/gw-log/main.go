@@ -83,7 +83,7 @@ func cmdRead(sessionsDir string, args []string) {
 	first := today
 	last := today.Add(24 * time.Hour)
 
-	// Positional range argument (e.g. "today", "yesterday", "this week", "last week").
+	// positional range argument (e.g. "today", "yesterday", "this week", "last week")
 	if len(posArgs) > 0 {
 		rangeStr := strings.ToLower(strings.Join(posArgs, " "))
 		rf, rl, ok := resolveRange(rangeStr, today)
@@ -93,7 +93,7 @@ func cmdRead(sessionsDir string, args []string) {
 		first, last = rf, rl
 	}
 
-	// Explicit flags override the range.
+	// explicit flags override the range
 	if *firstStr != "" {
 		t, err := time.ParseInLocation(dateLayout, *firstStr, now.Location())
 		if err != nil {
@@ -106,7 +106,7 @@ func cmdRead(sessionsDir string, args []string) {
 		if err != nil {
 			fatal("bad --last date: %v", err)
 		}
-		// Include the entire last day.
+		// include the entire last day
 		last = t.Add(24 * time.Hour)
 	}
 
@@ -142,7 +142,7 @@ func resolveRange(name string, today time.Time) (first, last time.Time, ok bool)
 		y := today.AddDate(0, 0, -1)
 		return y, today, true
 	case "this week":
-		// Week starts on Monday.
+		// week starts on Monday
 		wd := today.Weekday()
 		if wd == time.Sunday {
 			wd = 7
@@ -182,7 +182,7 @@ func splitArgs(args []string) (flagArgs, posArgs []string) {
 			continue
 		}
 		flagArgs = append(flagArgs, args[i])
-		// Flag without "=" needs the next arg as its value.
+		// flag without "=" needs the next arg as its value
 		if strings.Contains(args[i], "=") || i+1 >= len(args) {
 			continue
 		}

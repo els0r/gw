@@ -9,7 +9,7 @@ import (
 	"github.com/els0r/gw/internal/session"
 )
 
-// ANSI color codes
+// ansi color codes
 const (
 	reset  = "\033[0m"
 	bold   = "\033[1m"
@@ -36,10 +36,10 @@ func activity(a session.Activity) {
 	dur := a.TotalDuration()
 	switches := a.ContextSwitches()
 
-	// Header: activity name (italic)
+	// header: activity name (italic)
 	fmt.Printf("  %s%s%s\n", italic, name, reset)
 
-	// Duration + context switches
+	// duration + context switches
 	switchColor := contextSwitchColor(switches)
 	fmt.Printf("  %s%s    %s%d%s context %s\n",
 		dim, formatDuration(dur), switchColor, switches, reset,
@@ -47,17 +47,17 @@ func activity(a session.Activity) {
 
 	fmt.Println()
 
-	// Focus/park pairs
+	// focus/park pairs
 	for _, p := range a.Pairs {
-		// Focus line: timestamp ○ note
+		// focus line: timestamp ○ note
 		ts := p.Focus.Time.Format("2006-01-02 15:04")
 		fmt.Printf("  %s  %s○ %s%s\n", ts, dim, p.Focus.Note, reset)
 
-		// Park line: +Xm └── note
+		// park line: +Xm └── note
 		if p.Park != nil {
 			d := p.Duration()
 			dStr := formatDuration(d)
-			// Right-align duration under the timestamp area
+			// right-align duration under the timestamp area
 			pad := strings.Repeat(" ", 18-2-len(dStr))
 			fmt.Printf("  %s%s%s  %s└── %s%s\n", pad, dim, dStr, reset, p.Park.Note, reset)
 		}

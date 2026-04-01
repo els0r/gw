@@ -17,7 +17,7 @@ func WriteEntry(sessionsDir, branch string, typ EntryType, note string) error {
 
 	ts := time.Now().Format(timeLayout)
 
-	// Format matches existing convention:
+	// format matches existing convention:
 	//   "2026-03-31 14:03  focus: note"
 	//   "2026-03-31 14:42  park:  note"
 	var line string
@@ -30,7 +30,7 @@ func WriteEntry(sessionsDir, branch string, typ EntryType, note string) error {
 		return fmt.Errorf("unknown entry type: %s", typ)
 	}
 
-	// Append to log
+	// append to log
 	logPath := filepath.Join(dir, "log")
 	f, err := os.OpenFile(logPath, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0o644)
 	if err != nil {
@@ -41,7 +41,7 @@ func WriteEntry(sessionsDir, branch string, typ EntryType, note string) error {
 		return fmt.Errorf("writing log: %w", err)
 	}
 
-	// Update state file
+	// update state file
 	stateFile := filepath.Join(dir, string(typ))
 	if err := os.WriteFile(stateFile, []byte(note+"\n"), 0o644); err != nil {
 		return fmt.Errorf("writing state file: %w", err)
