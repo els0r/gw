@@ -2,3 +2,4 @@ config
 active
 early_token
 sessions/
+gw-log

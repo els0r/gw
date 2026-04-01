@@ -1,0 +1,102 @@
+package render
+
+import (
+	"fmt"
+	"math"
+	"strings"
+	"time"
+
+	"github.com/els0r/gw/internal/session"
+)
+
+// ANSI color codes
+const (
+	reset  = "\033[0m"
+	bold   = "\033[1m"
+	italic = "\033[3m"
+	dim    = "\033[2m"
+
+	green  = "\033[32m"
+	orange = "\033[33m"
+	red    = "\033[31m"
+)
+
+// Activities renders all activities to stdout in the table format.
+func Activities(activities []session.Activity) {
+	for i, a := range activities {
+		if i > 0 {
+			fmt.Println()
+		}
+		activity(a)
+	}
+}
+
+func activity(a session.Activity) {
+	name := a.Name()
+	dur := a.TotalDuration()
+	switches := a.ContextSwitches()
+
+	// Header: activity name (italic)
+	fmt.Printf("  %s%s%s\n", italic, name, reset)
+
+	// Duration + context switches
+	switchColor := contextSwitchColor(switches)
+	fmt.Printf("  %s%s    %s%d%s context %s\n",
+		dim, formatDuration(dur), switchColor, switches, reset,
+		pluralize("switch", "switches", switches))
+
+	fmt.Println()
+
+	// Focus/park pairs
+	for _, p := range a.Pairs {
+		// Focus line: timestamp ○ note
+		ts := p.Focus.Time.Format("2006-01-02 15:04")
+		fmt.Printf("  %s  %s○ %s%s\n", ts, dim, p.Focus.Note, reset)
+
+		// Park line: +Xm └── note
+		if p.Park != nil {
+			d := p.Duration()
+			dStr := formatDuration(d)
+			// Right-align duration under the timestamp area
+			pad := strings.Repeat(" ", 18-2-len(dStr))
+			fmt.Printf("  %s%s%s  %s└── %s%s\n", pad, dim, dStr, reset, p.Park.Note, reset)
+		}
+		fmt.Println()
+	}
+}
+
+func contextSwitchColor(n int) string {
+	switch {
+	case n == 1:
+		return green
+	case n >= 3 && n < 5:
+		return orange
+	case n >= 5:
+		return red
+	default:
+		return green
+	}
+}
+
+func formatDuration(d time.Duration) string {
+	if d <= 0 {
+		return "0m"
+	}
+	totalMinutes := int(math.Round(d.Minutes()))
+	if totalMinutes < 60 {
+		return fmt.Sprintf("%dm", totalMinutes)
+	}
+	h := totalMinutes / 60
+	m := totalMinutes % 60
+	if m == 0 {
+		return fmt.Sprintf("%dh", h)
+	}
+	return fmt.Sprintf("%dh%dm", h, m)
+}
+
+func pluralize(singular, plural string, n int) string {
+	if n == 1 {
+		return singular
+	}
+	return plural
+}
