@@ -9,6 +9,7 @@
 #   gw park   [branch]                            — save exit note, clear active session
 #   gw finish [branch]                            — park, then remove worktree and clean up
 #   gw list                                       — list active worktrees
+#   gw log    [range] [flags]                     — show session log (delegates to gw-log)
 #
 # Session state lives in ~/.gw/ — never touches the repo.
 # Worktree-local files (git-excluded):
@@ -20,7 +21,7 @@
 #   on-focus.d/*  — run when entering focus         (args: branch worktree_path)
 #   on-park.d/*   — run when parking a session      (args: branch worktree_path note)
 #
-# Requires: jq
+# Requires: jq, gw-log (Go binary, go build ./cmd/gw-log/)
 
 # ── Guards ───────────────────────────────────────────────────────────────────
 
@@ -128,13 +129,15 @@ gw() {
     park)   _gw_park   "$@" ;;
     finish) _gw_finish "$@" ;;
     list)   git worktree list ;;
+    log)    gw-log read "$@" ;;
     *)
-      echo "usage: gw <start|focus|park|finish|list>" >&2
+      echo "usage: gw <start|focus|park|finish|list|log>" >&2
       echo "  start  [-d subdir] <branch> [base]          — create worktree + focus + open" >&2
       echo "  focus  [--force] [--new-window] <branch>    — begin session" >&2
       echo "  park   [branch]                             — save exit note and release session" >&2
       echo "  finish [branch]                             — park + remove worktree" >&2
       echo "  list                                        — list active worktrees" >&2
+      echo "  log    [range] [--first=D] [--last=D]       — show session log" >&2
       return 1
       ;;
   esac
@@ -250,8 +253,7 @@ _gw_focus() {
   read -r goal
 
   if [[ -n "$goal" ]]; then
-    echo "$goal" > "${session_dir}/focus"
-    printf '%s  focus: %s\n' "$(date '+%Y-%m-%d %H:%M')" "$goal" >> "${session_dir}/log"
+    gw-log write --type=focus --branch="$branch" --note="$goal"
 
     # Write to worktree root for AI context pickup
     echo "$goal" > "${worktree_path}/.gw-focus"
@@ -294,8 +296,7 @@ _gw_park() {
   read -r note
 
   if [[ -n "$note" ]]; then
-    echo "$note" > "${session_dir}/park"
-    printf '%s  park:  %s\n' "$(date '+%Y-%m-%d %H:%M')" "$note" >> "${session_dir}/log"
+    gw-log write --type=park --branch="$branch" --note="$note"
   fi
 
   # Remove AI context file
