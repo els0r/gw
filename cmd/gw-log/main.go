@@ -69,11 +69,13 @@ func cmdWrite(sessionsDir string, args []string) {
 }
 
 func cmdRead(sessionsDir string, args []string) {
+	flagArgs, posArgs := splitArgs(args)
+
 	fs := flag.NewFlagSet("read", flag.ExitOnError)
 	firstStr := fs.String("first", "", "show logs from this date (YYYY-MM-DD)")
 	lastStr := fs.String("last", "", "show logs until this date (YYYY-MM-DD)")
 	sortStr := fs.String("sort", "desc", "sort order: desc (most recent last) or asc (most recent first)")
-	fs.Parse(args)
+	fs.Parse(flagArgs)
 
 	now := time.Now()
 	today := time.Date(now.Year(), now.Month(), now.Day(), 0, 0, 0, 0, now.Location())
@@ -82,9 +84,8 @@ func cmdRead(sessionsDir string, args []string) {
 	last := today.Add(24 * time.Hour)
 
 	// Positional range argument (e.g. "today", "yesterday", "this week", "last week").
-	// Consumed from remaining args after flag parsing.
-	if remaining := fs.Args(); len(remaining) > 0 {
-		rangeStr := strings.ToLower(strings.Join(remaining, " "))
+	if len(posArgs) > 0 {
+		rangeStr := strings.ToLower(strings.Join(posArgs, " "))
 		rf, rl, ok := resolveRange(rangeStr, today)
 		if !ok {
 			fatal("unknown range %q: use today, yesterday, \"this week\", or \"last week\"", rangeStr)
@@ -170,4 +171,23 @@ func usage() {
 func fatal(format string, args ...any) {
 	fmt.Fprintf(os.Stderr, "gw-log: "+format+"\n", args...)
 	os.Exit(1)
+}
+
+// splitArgs partitions args into flag args and positional args,
+// allowing flags to appear in any position relative to positional words.
+func splitArgs(args []string) (flagArgs, posArgs []string) {
+	for i := 0; i < len(args); i++ {
+		if !strings.HasPrefix(args[i], "-") {
+			posArgs = append(posArgs, args[i])
+			continue
+		}
+		flagArgs = append(flagArgs, args[i])
+		// Flag without "=" needs the next arg as its value.
+		if strings.Contains(args[i], "=") || i+1 >= len(args) {
+			continue
+		}
+		i++
+		flagArgs = append(flagArgs, args[i])
+	}
+	return
 }
