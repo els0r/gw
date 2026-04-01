@@ -41,8 +41,9 @@ func activity(a session.Activity) {
 
 	// duration + context switches
 	switchColor := contextSwitchColor(switches)
-	fmt.Printf("  %s%s    %s%d%s context %s\n",
-		dim, formatDuration(dur), switchColor, switches, reset,
+	fmt.Printf("  %s%s%s%s    %s%s%d%s context %s\n",
+		dim, bold, formatDuration(dur), reset,
+		switchColor, bold, switches, reset,
 		pluralize("switch", "switches", switches))
 
 	fmt.Println()
