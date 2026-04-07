@@ -1,5 +1,7 @@
-config
+.claude/settings.local.json
 active
-early_token
-sessions/
+config
+config.yaml
+*_token
 gw-log
+sessions/

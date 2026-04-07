@@ -21,13 +21,16 @@
 #   on-focus.d/*  — run when entering focus         (args: branch worktree_path)
 #   on-park.d/*   — run when parking a session      (args: branch worktree_path note)
 #
-# Requires: jq, gw-log (Go binary, go build ./cmd/gw-log/)
+# Requires: jq, yq, gw-log (Go binary, go build ./cmd/gw-log/)
 
 # ── Guards ───────────────────────────────────────────────────────────────────
 
 _gw_check_deps() {
-  if ! command -v jq &>/dev/null; then
-    echo "gw: jq is required but not installed (brew install jq)" >&2
+  local missing=()
+  command -v jq &>/dev/null || missing+=(jq)
+  command -v yq &>/dev/null || missing+=(yq)
+  if [[ ${#missing[@]} -gt 0 ]]; then
+    echo "gw: missing dependencies: ${missing[*]} (brew install ${missing[*]})" >&2
     return 1
   fi
 }
@@ -37,8 +40,26 @@ _gw_check_deps || { [[ "${BASH_SOURCE[0]}" == "$0" ]] && exit 1 || return 1; }
 
 GW_STATE_DIR="${HOME}/.gw"
 
+# Read a value from ~/.gw/config.yaml
+_gw_read_config() {
+  local key="$1" cfg="${GW_STATE_DIR}/config.yaml"
+  [[ -f "$cfg" ]] || return 1
+  yq -r ".${key} // \"\"" "$cfg"
+}
+
+# Resolve sessions directory: env > config > default
+_gw_sessions_dir() {
+  if [[ -n "${GW_SESSIONS_DIR:-}" ]]; then
+    echo "$GW_SESSIONS_DIR"
+  else
+    local val
+    val="$(_gw_read_config sessions_dir)" && [[ -n "$val" ]] && echo "$val" \
+      || echo "${GW_STATE_DIR}/sessions"
+  fi
+}
+
 _gw_active_file()  { echo "${GW_STATE_DIR}/active"; }
-_gw_session_dir()  { echo "${GW_STATE_DIR}/sessions/${1//\//-}"; }
+_gw_session_dir()  { echo "$(_gw_sessions_dir)/${1//\//-}"; }
 
 _gw_set_active()   { mkdir -p "$GW_STATE_DIR"; echo "$1" > "$(_gw_active_file)"; }
 _gw_clear_active() { rm -f "$(_gw_active_file)"; }
@@ -129,15 +150,15 @@ gw() {
     park)   _gw_park   "$@" ;;
     finish) _gw_finish "$@" ;;
     list)   git worktree list ;;
-    log)    gw-log read "$@" ;;
+    log)    gw-log --sessions-dir="$(_gw_sessions_dir)" read "$@" ;;
     *)
       echo "usage: gw <start|focus|park|finish|list|log>" >&2
       echo "  start  [-d subdir] <branch> [base]          — create worktree + focus + open" >&2
       echo "  focus  [--force] [--new-window] <branch>    — begin session" >&2
       echo "  park   [branch]                             — save exit note and release session" >&2
-      echo "  finish [branch]                             — park + remove worktree" >&2
+      echo "  finish [branch]                              — park + remove worktree" >&2
       echo "  list                                        — list active worktrees" >&2
-      echo "  log    [range] [--first=D] [--last=D]       — show session log" >&2
+      echo "  log    [range] [--first=D] [--last=D]        — show session log" >&2
       return 1
       ;;
   esac
@@ -253,7 +274,7 @@ _gw_focus() {
   read -r goal
 
   if [[ -n "$goal" ]]; then
-    gw-log write --type=focus --branch="$branch" --note="$goal"
+    gw-log --sessions-dir="$(_gw_sessions_dir)" write --type=focus --branch="$branch" --note="$goal"
 
     # Write to worktree root for AI context pickup
     echo "$goal" > "${worktree_path}/.gw-focus"
@@ -296,7 +317,7 @@ _gw_park() {
   read -r note
 
   if [[ -n "$note" ]]; then
-    gw-log write --type=park --branch="$branch" --note="$note"
+    gw-log --sessions-dir="$(_gw_sessions_dir)" write --type=park --branch="$branch" --note="$note"
   fi
 
   # Remove AI context file
