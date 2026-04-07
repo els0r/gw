@@ -44,7 +44,9 @@ GW_STATE_DIR="${HOME}/.gw"
 _gw_read_config() {
   local key="$1" cfg="${GW_STATE_DIR}/config.yaml"
   [[ -f "$cfg" ]] || return 1
-  yq -r ".${key} // \"\"" "$cfg"
+  local val
+  val="$(yq ".${key}" "$cfg")"
+  [[ -n "$val" && "$val" != "null" ]] && echo "$val" || return 1
 }
 
 # Resolve sessions directory: env > config > default

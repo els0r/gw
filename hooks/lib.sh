@@ -6,8 +6,11 @@ GW_STATE_DIR="${HOME}/.gw"
 
 gw_config_get() {
   local key="$1"
-  local cfg="${GW_STATE_DIR}/config"
-  [[ -f "$cfg" ]] && grep -E "^${key}=" "$cfg" | cut -d= -f2-
+  local cfg="${GW_STATE_DIR}/config.yaml"
+  [[ -f "$cfg" ]] || return 1
+  local val
+  val="$(yq ".${key}" "$cfg")"
+  [[ -n "$val" && "$val" != "null" ]] && echo "$val" || return 1
 }
 
 # ── EARLY token management ───────────────────────────────────────────────────
@@ -16,8 +19,8 @@ EARLY_BASE="https://api.early.app/api/v4"
 
 gw_early_configured() {
   local key secret
-  key="$(gw_config_get EARLY_API_KEY)"
-  secret="$(gw_config_get EARLY_API_SECRET)"
+  key="$(gw_config_get early_api_key)"
+  secret="$(gw_config_get early_api_secret)"
   [[ -n "$key" && -n "$secret" ]]
 }
 
@@ -29,8 +32,8 @@ gw_early_token() {
     [[ $age -lt 82800 ]] && { cat "$cache"; return 0; }
   fi
   local api_key api_secret
-  api_key="$(gw_config_get EARLY_API_KEY)"
-  api_secret="$(gw_config_get EARLY_API_SECRET)"
+  api_key="$(gw_config_get early_api_key)"
+  api_secret="$(gw_config_get early_api_secret)"
   local token
   token=$(curl -s -X POST "${EARLY_BASE}/developer/sign-in" \
     -H "Content-Type: application/json" \
