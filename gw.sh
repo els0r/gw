@@ -276,7 +276,11 @@ _gw_focus() {
   read -r goal
 
   if [[ -n "$goal" ]]; then
-    gw-log --sessions-dir="$(_gw_sessions_dir)" write --type=focus --branch="$branch" --note="$goal"
+    local activity_flag=""
+    [[ -f "${worktree_path}/.gw-activity" ]] && \
+      activity_flag="--activity=$(cat "${worktree_path}/.gw-activity")"
+
+    gw-log --sessions-dir="$(_gw_sessions_dir)" write --type=focus --branch="$branch" --note="$goal" $activity_flag
 
     # Write to worktree root for AI context pickup
     echo "$goal" > "${worktree_path}/.gw-focus"
@@ -313,18 +317,23 @@ _gw_park() {
   session_dir="$(_gw_session_dir "$branch")"
   mkdir -p "$session_dir"
 
+  local worktree_path
+  worktree_path="$(_gw_worktree_path "$branch")"
+
   echo ""
   printf "  where did you leave off / next action? "
   local note
   read -r note
 
   if [[ -n "$note" ]]; then
-    gw-log --sessions-dir="$(_gw_sessions_dir)" write --type=park --branch="$branch" --note="$note"
+    local activity_flag=""
+    [[ -f "${worktree_path}/.gw-activity" ]] && \
+      activity_flag="--activity=$(cat "${worktree_path}/.gw-activity")"
+
+    gw-log --sessions-dir="$(_gw_sessions_dir)" write --type=park --branch="$branch" --note="$note" $activity_flag
   fi
 
   # Remove AI context file
-  local worktree_path
-  worktree_path="$(_gw_worktree_path "$branch")"
   [[ -f "${worktree_path}/.gw-focus" ]] && rm -f "${worktree_path}/.gw-focus"
 
   _gw_clear_active

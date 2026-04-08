@@ -31,7 +31,7 @@ func TestWriteEntry(t *testing.T) {
 	dir := t.TempDir()
 
 	// Write a focus entry.
-	if err := WriteEntry(dir, "feature/test", Focus, "started work"); err != nil {
+	if err := WriteEntry(dir, "feature/test", Focus, "started work", ""); err != nil {
 		t.Fatal(err)
 	}
 
@@ -57,7 +57,7 @@ func TestWriteEntry(t *testing.T) {
 	}
 
 	// Write a park entry — should append to same log.
-	if err := WriteEntry(dir, "feature/test", Park, "left off here"); err != nil {
+	if err := WriteEntry(dir, "feature/test", Park, "left off here", ""); err != nil {
 		t.Fatal(err)
 	}
 
@@ -80,5 +80,50 @@ func TestWriteEntry(t *testing.T) {
 	}
 	if string(stateData) != "left off here\n" {
 		t.Errorf("park state: got %q", string(stateData))
+	}
+}
+
+func TestWriteEntryWithActivity(t *testing.T) {
+	dir := t.TempDir()
+
+	if err := WriteEntry(dir, "feature/test", Focus, "started work", "act-123"); err != nil {
+		t.Fatal(err)
+	}
+
+	sessionDir := filepath.Join(dir, "feature-test")
+
+	// verify activity file was created
+	actData, err := os.ReadFile(filepath.Join(sessionDir, "activity"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got := strings.TrimSpace(string(actData)); got != "act-123" {
+		t.Errorf("activity: got %q, want %q", got, "act-123")
+	}
+
+	// subsequent write with different activity overwrites
+	if err := WriteEntry(dir, "feature/test", Park, "done", "act-456"); err != nil {
+		t.Fatal(err)
+	}
+	actData, err = os.ReadFile(filepath.Join(sessionDir, "activity"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got := strings.TrimSpace(string(actData)); got != "act-456" {
+		t.Errorf("activity after overwrite: got %q, want %q", got, "act-456")
+	}
+}
+
+func TestWriteEntryNoActivity(t *testing.T) {
+	dir := t.TempDir()
+
+	if err := WriteEntry(dir, "main", Focus, "work", ""); err != nil {
+		t.Fatal(err)
+	}
+
+	// activity file should not exist when no ID provided
+	actPath := filepath.Join(dir, "main", "activity")
+	if _, err := os.Stat(actPath); !os.IsNotExist(err) {
+		t.Errorf("expected activity file to not exist, got err: %v", err)
 	}
 }

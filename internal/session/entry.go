@@ -51,8 +51,9 @@ func (fp FocusPair) Duration() time.Duration {
 
 // Activity holds all entries for one session directory.
 type Activity struct {
-	ID    string      // directory name (e.g. "feature-firewall-hits-routing")
-	Pairs []FocusPair // focus/park pairs in chronological order
+	ID         string      // directory name (e.g. "feature-firewall-hits-routing")
+	ActivityID string      // external activity ID (e.g. EARLY), empty if not set
+	Pairs      []FocusPair // focus/park pairs in chronological order
 }
 
 // Name derives a human-readable name from the activity ID.
@@ -225,8 +226,9 @@ func ReadAllActivities(sessionsDir string, first, last time.Time, order SortOrde
 		}
 
 		activities = append(activities, Activity{
-			ID:    de.Name(),
-			Pairs: pairs,
+			ID:         de.Name(),
+			ActivityID: readActivityID(filepath.Join(sessionsDir, de.Name())),
+			Pairs:      pairs,
 		})
 	}
 
@@ -239,4 +241,14 @@ func ReadAllActivities(sessionsDir string, first, last time.Time, order SortOrde
 	})
 
 	return activities, nil
+}
+
+// readActivityID reads the activity metadata file from a session directory.
+// Returns empty string if the file does not exist or is unreadable.
+func readActivityID(sessionDir string) string {
+	data, err := os.ReadFile(filepath.Join(sessionDir, "activity"))
+	if err != nil {
+		return ""
+	}
+	return strings.TrimSpace(string(data))
 }

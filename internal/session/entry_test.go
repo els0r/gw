@@ -311,3 +311,54 @@ func TestReadAllActivities(t *testing.T) {
 		}
 	})
 }
+
+func TestReadAllActivitiesWithActivityID(t *testing.T) {
+	dir := t.TempDir()
+
+	mkActivity := func(name, logContent, activityID string) {
+		t.Helper()
+		d := filepath.Join(dir, name)
+		if err := os.MkdirAll(d, 0o755); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.WriteFile(filepath.Join(d, "log"), []byte(logContent), 0o644); err != nil {
+			t.Fatal(err)
+		}
+		if activityID != "" {
+			if err := os.WriteFile(filepath.Join(d, "activity"), []byte(activityID+"\n"), 0o644); err != nil {
+				t.Fatal(err)
+			}
+		}
+	}
+
+	mkActivity("alpha",
+		"2026-03-31 09:00  focus: alpha work\n"+
+			"2026-03-31 09:30  park:  alpha done\n",
+		"early-id-1")
+
+	mkActivity("beta",
+		"2026-03-31 14:00  focus: beta work\n"+
+			"2026-03-31 14:45  park:  beta done\n",
+		"") // no activity ID
+
+	first := mustTime("2026-03-31 00:00")
+	last := mustTime("2026-04-01 00:00")
+
+	activities, err := ReadAllActivities(dir, first, last, SortDesc)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(activities) != 2 {
+		t.Fatalf("got %d activities, want 2", len(activities))
+	}
+
+	// alpha has activity ID
+	if activities[0].ActivityID != "early-id-1" {
+		t.Errorf("alpha.ActivityID: got %q, want %q", activities[0].ActivityID, "early-id-1")
+	}
+
+	// beta has no activity ID
+	if activities[1].ActivityID != "" {
+		t.Errorf("beta.ActivityID: got %q, want empty", activities[1].ActivityID)
+	}
+}

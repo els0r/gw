@@ -21,18 +21,21 @@ const (
 	red    = "\033[31m"
 )
 
+// NameFunc resolves a display name for an activity.
+type NameFunc func(a session.Activity) string
+
 // Activities renders all activities to stdout in the table format.
-func Activities(activities []session.Activity) {
+func Activities(activities []session.Activity, nameFunc NameFunc) {
 	for i, a := range activities {
 		if i > 0 {
 			fmt.Println()
 		}
-		activity(a)
+		activity(a, nameFunc)
 	}
 }
 
-func activity(a session.Activity) {
-	name := a.Name()
+func activity(a session.Activity, nameFunc NameFunc) {
+	name := nameFunc(a)
 	dur := a.TotalDuration()
 	switches := a.ContextSwitches()
 

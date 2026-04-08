@@ -8,7 +8,8 @@ import (
 )
 
 // WriteEntry appends a log entry and updates the state file (focus or park).
-func WriteEntry(sessionsDir, branch string, typ EntryType, note string) error {
+// If activityID is non-empty, it is persisted as session metadata.
+func WriteEntry(sessionsDir, branch string, typ EntryType, note, activityID string) error {
 	dirName := sanitizeBranch(branch)
 	dir := filepath.Join(sessionsDir, dirName)
 	if err := os.MkdirAll(dir, 0o755); err != nil {
@@ -45,6 +46,14 @@ func WriteEntry(sessionsDir, branch string, typ EntryType, note string) error {
 	stateFile := filepath.Join(dir, string(typ))
 	if err := os.WriteFile(stateFile, []byte(note+"\n"), 0o644); err != nil {
 		return fmt.Errorf("writing state file: %w", err)
+	}
+
+	// persist activity ID when provided
+	if activityID != "" {
+		activityFile := filepath.Join(dir, "activity")
+		if err := os.WriteFile(activityFile, []byte(activityID+"\n"), 0o644); err != nil {
+			return fmt.Errorf("writing activity file: %w", err)
+		}
 	}
 
 	return nil
