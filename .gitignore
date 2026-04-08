@@ -3,5 +3,5 @@ active
 config
 config.yaml
 *_token
-gw-log
+/gw-log
 sessions/
