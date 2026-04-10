@@ -3,6 +3,7 @@ package cmd
 import (
 	"fmt"
 
+	"github.com/els0r/gw/internal/activity"
 	"github.com/els0r/gw/internal/session"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
@@ -60,7 +61,13 @@ func writeEntrypoint(cmd *cobra.Command, args []string) error {
 	note := viper.GetString(flagNote)
 	activityID := viper.GetString(flagActivity)
 
-	if err := session.WriteEntry(sessionsDir(), branch, entryType, note, activityID); err != nil {
+	ctx := cmd.Context()
+	resolver := buildResolver(ctx, cmd)
+	resolve := func(id string) string {
+		return activity.ResolveName(ctx, id, resolver)
+	}
+
+	if err := session.WriteEntry(sessionsDir(), branch, entryType, note, activityID, resolve); err != nil {
 		return fmt.Errorf("write failed: %w", err)
 	}
 	return nil

@@ -104,6 +104,8 @@ func readEntrypoint(cmd *cobra.Command, args []string) error {
 		return activity.DisplayName(ctx, a, resolver)
 	}
 
+	activities = session.MergeByName(activities, nameFunc, order)
+
 	render.Activities(activities, nameFunc)
 	return nil
 }

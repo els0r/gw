@@ -243,6 +243,52 @@ func ReadAllActivities(sessionsDir string, first, last time.Time, order SortOrde
 	return activities, nil
 }
 
+// NameFunc returns a display name for an activity.
+type NameFunc func(Activity) string
+
+// MergeByName groups activities that share the same display name, combining
+// their pairs in chronological order. The merged activity keeps the ID and
+// ActivityID of the first occurrence. Order of the result preserves the
+// relative order of the first occurrence of each name.
+func MergeByName(activities []Activity, nameFunc NameFunc, order SortOrder) []Activity {
+	type bucket struct {
+		name string
+		act  Activity
+	}
+
+	seen := make(map[string]int) // name → index in buckets
+	var buckets []bucket
+
+	for _, a := range activities {
+		name := nameFunc(a)
+		if idx, ok := seen[name]; ok {
+			buckets[idx].act.Pairs = append(buckets[idx].act.Pairs, a.Pairs...)
+		} else {
+			seen[name] = len(buckets)
+			buckets = append(buckets, bucket{name: name, act: a})
+		}
+	}
+
+	merged := make([]Activity, 0, len(buckets))
+	for _, b := range buckets {
+		// re-sort pairs chronologically after merging
+		sort.Slice(b.act.Pairs, func(i, j int) bool {
+			return b.act.Pairs[i].Focus.Time.Before(b.act.Pairs[j].Focus.Time)
+		})
+		merged = append(merged, b.act)
+	}
+
+	// re-sort activities by the chosen order
+	sort.Slice(merged, func(i, j int) bool {
+		if order == SortAsc {
+			return merged[i].LatestTime().After(merged[j].LatestTime())
+		}
+		return merged[i].LatestTime().Before(merged[j].LatestTime())
+	})
+
+	return merged
+}
+
 // readActivityID reads the activity metadata file from a session directory.
 // Returns empty string if the file does not exist or is unreadable.
 func readActivityID(sessionDir string) string {

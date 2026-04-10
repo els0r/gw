@@ -362,3 +362,84 @@ func TestReadAllActivitiesWithActivityID(t *testing.T) {
 		t.Errorf("beta.ActivityID: got %q, want empty", activities[1].ActivityID)
 	}
 }
+
+func TestMergeByName(t *testing.T) {
+	pair := func(focusTS, parkTS string) FocusPair {
+		fp := FocusPair{Focus: Entry{Time: mustTime(focusTS), Type: Focus}}
+		if parkTS != "" {
+			p := Entry{Time: mustTime(parkTS), Type: Park}
+			fp.Park = &p
+		}
+		return fp
+	}
+
+	t.Run("activities with same name are merged", func(t *testing.T) {
+		activities := []Activity{
+			{ID: "branch-a", ActivityID: "E1", Pairs: []FocusPair{pair("2026-04-08 14:00", "2026-04-08 15:00")}},
+			{ID: "branch-b", ActivityID: "E1", Pairs: []FocusPair{pair("2026-04-08 09:00", "2026-04-08 10:00")}},
+			{ID: "branch-c", Pairs: []FocusPair{pair("2026-04-08 12:00", "2026-04-08 13:00")}},
+		}
+		nameFunc := func(a Activity) string {
+			if a.ActivityID == "E1" {
+				return "Shared Task"
+			}
+			return a.Name()
+		}
+
+		merged := MergeByName(activities, nameFunc, SortDesc)
+
+		if len(merged) != 2 {
+			t.Fatalf("got %d activities, want 2", len(merged))
+		}
+
+		// find the merged one
+		var shared *Activity
+		for i := range merged {
+			if nameFunc(merged[i]) == "Shared Task" {
+				shared = &merged[i]
+				break
+			}
+		}
+		if shared == nil {
+			t.Fatal("merged activity 'Shared Task' not found")
+		}
+		if len(shared.Pairs) != 2 {
+			t.Fatalf("merged pairs: got %d, want 2", len(shared.Pairs))
+		}
+		// pairs should be sorted chronologically (09:00 before 14:00)
+		if shared.Pairs[0].Focus.Time.After(shared.Pairs[1].Focus.Time) {
+			t.Error("merged pairs not in chronological order")
+		}
+	})
+
+	t.Run("no merge when names differ", func(t *testing.T) {
+		activities := []Activity{
+			{ID: "alpha", Pairs: []FocusPair{pair("2026-04-08 10:00", "2026-04-08 11:00")}},
+			{ID: "beta", Pairs: []FocusPair{pair("2026-04-08 12:00", "2026-04-08 13:00")}},
+		}
+		nameFunc := func(a Activity) string { return a.Name() }
+
+		merged := MergeByName(activities, nameFunc, SortDesc)
+		if len(merged) != 2 {
+			t.Fatalf("got %d activities, want 2", len(merged))
+		}
+	})
+
+	t.Run("sort order is respected", func(t *testing.T) {
+		activities := []Activity{
+			{ID: "early", Pairs: []FocusPair{pair("2026-04-08 09:00", "2026-04-08 10:00")}},
+			{ID: "late", Pairs: []FocusPair{pair("2026-04-08 16:00", "2026-04-08 17:00")}},
+		}
+		nameFunc := func(a Activity) string { return a.Name() }
+
+		asc := MergeByName(activities, nameFunc, SortAsc)
+		if asc[0].ID != "late" {
+			t.Errorf("asc: first should be 'late', got %q", asc[0].ID)
+		}
+
+		desc := MergeByName(activities, nameFunc, SortDesc)
+		if desc[0].ID != "early" {
+			t.Errorf("desc: first should be 'early', got %q", desc[0].ID)
+		}
+	})
+}

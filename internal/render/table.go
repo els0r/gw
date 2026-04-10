@@ -52,9 +52,19 @@ func activity(a session.Activity, nameFunc NameFunc) {
 	fmt.Println()
 
 	// focus/park pairs
+	var lastDate string
 	for _, p := range a.Pairs {
 		// focus line: timestamp ○ note
-		ts := p.Focus.Time.Format("2006-01-02 15:04")
+		date := p.Focus.Time.Format("2006-01-02")
+		timeOnly := p.Focus.Time.Format("15:04")
+
+		var ts string
+		if date != lastDate {
+			ts = bold + date + " " + timeOnly + reset
+			lastDate = date
+		} else {
+			ts = strings.Repeat(" ", len(date)+1) + timeOnly
+		}
 		fmt.Printf("  %s  %s○ %s%s\n", ts, dim, p.Focus.Note, reset)
 
 		// park line: +Xm └── note
